@@ -1,14 +1,31 @@
-use std::{collections::HashMap, vec};
-
+use anyhow::*;
+use clap::Parser;
 use serde_json::Value;
+use std::{collections::HashMap, vec};
+mod args;
 
-fn main() {
+fn main() -> Result<()> {
+    let args = args::Args::parse();
+    let border_type = args.border_type.to_ascii_lowercase();
+
+    let border = match &border_type[..] {
+        "none" => Some(comfy_table::presets::NOTHING),
+        "utf8" => Some(comfy_table::presets::UTF8_FULL),
+        "ascii" => Some(comfy_table::presets::ASCII_FULL),
+        _ => None,
+    };
+    if border.is_none() {
+        return Err(anyhow::Error::msg(format!(
+            "Invalid border type \"{border_type}\""
+        )));
+    }
+
     let stdin = std::io::stdin();
-    let content = std::io::read_to_string(stdin).unwrap();
+    let content = std::io::read_to_string(stdin)?;
 
     // println!("{:?}", content);
 
-    let root: Value = serde_json::from_str(&content).unwrap();
+    let root: Value = serde_json::from_str(&content).with_context(|| "Failed to parse JSON")?;
 
     let mut objs: Vec<Value> = vec![];
 
@@ -21,8 +38,7 @@ fn main() {
             }
         }
     } else {
-        println!("Input needs to be an array");
-        std::process::exit(1);
+        return Err(anyhow::Error::msg("Input needs to be an array"));
     }
 
     let mut common_fields: HashMap<String, usize> = HashMap::new();
@@ -35,9 +51,12 @@ fn main() {
         }
     }
 
+    // Generate table
+
     let mut t = comfy_table::Table::new();
     let mut header: Vec<String> = vec![];
 
+    // Header fields (keys)
     for (k, v) in common_fields.iter() {
         if *v == objs.len() {
             header.push(k.clone());
@@ -45,8 +64,9 @@ fn main() {
     }
 
     t.set_header(header.clone());
-    t.load_preset(comfy_table::presets::NOTHING);
+    t.load_preset(border.unwrap());
 
+    // Value fields
     for o in objs {
         let mut row: Vec<String> = vec![];
         for k in &header {
@@ -56,4 +76,5 @@ fn main() {
     }
 
     println!("{}", t);
+    return Ok(());
 }
