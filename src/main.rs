@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use serde_json::Value;
 use std::{collections::HashMap, vec};
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
     let mut header: Vec<String> = vec![];
 
     // Header fields (keys)
-    for (k, v) in common_fields.iter() {
+    for (k, v) in &common_fields {
         if *v == objs.len() {
             header.push(k.clone());
         }
@@ -75,6 +75,6 @@ fn main() -> Result<()> {
         t.add_row(row);
     }
 
-    println!("{}", t);
-    return Ok(());
+    println!("{t}");
+    Ok(())
 }
